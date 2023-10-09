@@ -1,5 +1,6 @@
 import cv2
 import time
+import supervision as sv
 from threading import Thread
 from ultralytics import YOLO
 from ultralytics.utils.plotting import Annotator
@@ -102,19 +103,26 @@ from ultralytics.utils.plotting import Annotator
 #     cv2.destroyAllWindows()
 
 
-if __name__ == '__main__':
+def main():
 
     model = YOLO("box.pt")
+
+    # box_annotator = sv.BoxAnnotator(
+    #     thickness=2,
+    #     text_thickness=2,
+    #     text_scale=1
+    # )
     cap = cv2.VideoCapture(0)
-    if cap.isOpened() is False:
+    if not cap.isOpened():
         print("[ERROR] Cannot access webcam stream.")
         exit(0)
+
     # FPS of the input stream
     # Get the 5th property of VideoCapture object: cv2.CAP_PROP_POS_MSEC
     fps_input_stream = int(cap.get(5))
     print(f"FPS: {fps_input_stream}")
-
-    success, frame = cap.read()  # reading single frame for hardware warm-up
+    for _ in range(5):
+        success, frame = cap.read()  # reading single frame for hardware warm-up
 
     # delay variable is used in the code for simulating time taken for processing the frame.
     # Different amounts of delay can be used to evaluate performance.
@@ -123,7 +131,7 @@ if __name__ == '__main__':
 
     while True:
         success, frame = cap.read()
-        if success is False:
+        if not success:
             print("[EXIT].. No more frames to read")
             break
 
@@ -132,23 +140,24 @@ if __name__ == '__main__':
         time.sleep(delay)
         num_frames_processed += 1
 
-        results = model.predict(frame, imgsz=320, conf=0.8)
+        results = model.predict(
+            frame, stream=True, imgsz=320, conf=0.8, agnostic_nms=True)
+        # # detections = sv.Detections.from_yolov8(results)
         for result in results:
             boxes = result.boxes  # Boxes object for bbox outputs
-            # for box in boxes:                                          # iterate boxes
-            #     # get corner points as int
-            #     r = box.xyxy[0]
-            #     # print boxes
-            #     print(r)
-            #     cv2.rectangle(frame, r[:2], r[2:], (255, 255, 255), 2)
-            masks = result.masks
-            frame = cv2.bitwise_and(frame, frame, mask=masks)
+            for box in boxes:
+                x1, y1, x2, y2 = box.xyxy[0]
+                x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
+                # iterate boxes
+                cv2.rectangle(frame, (x1, y1), (x2, y2), (255, 0, 0), 3)
+        #     # masks = result.masks
+        #     # frame = cv2.bitwise_and(frame, frame, mask=masks)
 
-            probs = result.probs
-            print(masks)
-            print(probs)
+        #     # probs = result.probs
+        #     # print(masks)
+        #     # print(probs)
 
-        cv2.imshow('frame', frame)
+        cv2.imshow("Frame", mat=frame)
         key = cv2.waitKey(1)
         if key == ord('q'):
             break
@@ -160,3 +169,7 @@ if __name__ == '__main__':
 
     cap.release()
     cv2.destroyAllWindows()
+
+
+if __name__ == "__main__":
+    main()
