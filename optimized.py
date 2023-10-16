@@ -112,7 +112,7 @@ def main():
     #     text_thickness=2,
     #     text_scale=1
     # )
-    cap = cv2.VideoCapture(0)
+    cap = cv2.VideoCapture(1)
     if not cap.isOpened():
         print("[ERROR] Cannot access webcam stream.")
         exit(0)
@@ -131,6 +131,7 @@ def main():
 
     while True:
         success, frame = cap.read()
+        H, W, channels = frame.shape
         if not success:
             print("[EXIT].. No more frames to read")
             break
@@ -141,22 +142,30 @@ def main():
         num_frames_processed += 1
 
         results = model.predict(
-            frame, stream=True, imgsz=320, conf=0.8, agnostic_nms=True)
+            frame, stream=True, imgsz=640, conf=0.7, agnostic_nms=True)
         # # detections = sv.Detections.from_yolov8(results)
+        count = 0
         for result in results:
+            count += 1
             boxes = result.boxes  # Boxes object for bbox outputs
             for box in boxes:
                 x1, y1, x2, y2 = box.xyxy[0]
                 x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
                 # iterate boxes
                 cv2.rectangle(frame, (x1, y1), (x2, y2), (255, 0, 0), 3)
-        #     # masks = result.masks
-        #     # frame = cv2.bitwise_and(frame, frame, mask=masks)
+                cv2.circle(frame, (W // 2, H // 2), 2, (0, 0, 255), 2)
+                cv2.circle(frame, ((x1 + x2) // 2, (y1 + y2) // 2),
+                           2, (0, 255, 0), 2)
 
-        #     # probs = result.probs
+            # masks = result.masks
+            # frame = cv2.bitwise_and(frame, frame, mask=masks)
+
+            # probs = result.probs
         #     # print(masks)
         #     # print(probs)
 
+        cv2.putText(frame, str(count), (0, 0),
+                    cv2.FONT_HERSHEY_SIMPLEX, 5, (0, 255, 0), 5)
         cv2.imshow("Frame", mat=frame)
         key = cv2.waitKey(1)
         if key == ord('q'):
